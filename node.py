@@ -144,8 +144,6 @@ def recive():
         except ConnectionResetError:
             pass
         
-        
-
 # Uma thread executa essa função para lidar com o input de mensagens no terminal.             
 def handle_input():
     global message_list
