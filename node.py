@@ -70,16 +70,7 @@ def recive():
                 token = int(data)
                 if len(message_list) > 0:
                     msg = message_list.pop(0)
-                    if msg.startswith("/priv "):
-                        to_nickname = msg.split(" ")[1]
-                        last_message = [to_nickname, msg]
-                        msg = ' '.join(msg.split(" ")[2:])
-                        msg = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(msg, True)) + ";" + msg
-                        send(msg)
-                    else:
-                        msg = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(msg, True)) + ";" + msg
-                        last_message = ["TODOS", msg]
-                        send(msg)
+                    send(msg)
                 else:
                     token = -1
                     send("9000")
@@ -146,17 +137,26 @@ def recive():
         
 # Uma thread executa essa função para lidar com o input de mensagens no terminal.             
 def handle_input():
-    global message_list
+    global message_list, last_message
     print("\n# === === === === === === Chat === === === === === === #")
     print("   ↓   ↓   ↓   ↓   ↓   ↓        ↓   ↓   ↓   ↓   ↓   ↓\n")
     
     # Loop para ficar esperando por input de mensagens.
     while True:
-        new_message = input("")
+        input = input("")
+        if input.startswith("/priv "):
+            to_nickname = input.split(" ")[1]
+            text = ' '.join(new_message.split(" ")[2:])
+            new_message = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(text, True)) + ";" + text
+            last_message = new_message
+        else:
+            new_message = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(input, True)) + ";" + input
+            last_message = new_message
+            
         if len(message_list) < 10:
             message_list.append(new_message)
         else:
-            print("SYSTEM: Message list is full. (msg: " + new_message + ")")
+            print("SYSTEM: Message list is full. (msg: " + input + ")")
 
 # Essa função serve para enviar uma mensagem ao nodo referenciado no 'config.json'.
 def send(msg):
