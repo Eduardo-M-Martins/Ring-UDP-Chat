@@ -12,8 +12,8 @@ from socket import *
 import time
 import threading
 
-last_message, message_list = [], []
-ip_destny, nickname = "", ""
+message_list = []
+ip_destny, last_message, nickname = "", "", ""
 delay, token = 0, -1
 gen_token = False
 
@@ -122,7 +122,7 @@ def recive():
                             send("9000")
                         # Se o outro nó recebeu a menssagem com erro:
                         elif header == "NACK":             
-                            message_list = [last_message[1]] + message_list
+                            message_list = [last_message] + message_list
                             print("SYSTEM: O nó '" + to_nickname + "' recebeu a menssagem com erro. (msg: " + msg + ")")
                             token = -1
                             send("9000")
@@ -137,26 +137,26 @@ def recive():
         
 # Uma thread executa essa função para lidar com o input de mensagens no terminal.             
 def handle_input():
-    global message_list, last_message
+    global ip_destny, nickname, delay, gen_token, token, message_list, SOCKET, last_message
     print("\n# === === === === === === Chat === === === === === === #")
     print("   ↓   ↓   ↓   ↓   ↓   ↓        ↓   ↓   ↓   ↓   ↓   ↓\n")
     
     # Loop para ficar esperando por input de mensagens.
     while True:
-        input = input("")
-        if input.startswith("/priv "):
-            to_nickname = input.split(" ")[1]
-            text = ' '.join(new_message.split(" ")[2:])
+        user_input = input("")
+        if user_input.startswith("/priv "):
+            to_nickname = user_input.split(" ")[1]
+            text = ' '.join(user_input.split(" ")[2:])
             new_message = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(text, True)) + ";" + text
             last_message = new_message
         else:
-            new_message = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(input, True)) + ";" + input
+            new_message = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(user_input, True)) + ";" + user_input
             last_message = new_message
             
         if len(message_list) < 10:
             message_list.append(new_message)
         else:
-            print("SYSTEM: Message list is full. (msg: " + input + ")")
+            print("SYSTEM: Message list is full. (msg: " + user_input + ")")
 
 # Essa função serve para enviar uma mensagem ao nodo referenciado no 'config.json'.
 def send(msg):
