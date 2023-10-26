@@ -61,84 +61,90 @@ def recive():
     
     # Loop para ficar esperando por pacotes.
     while True:
-        data, _ = SOCKET.recvfrom(1024)
-        data = data.decode("utf-8")
+        try:
+            data, _ = SOCKET.recvfrom(1024)
+            data = data.decode("utf-8")
         
-        # Se o pacote for um token:
-        if data == "9000":
-            token = int(data)
-            if len(message_list) > 0:
-                msg = message_list.pop(0)
-                if msg.startswith("/priv "):
-                    to_nickname = msg.split(" ")[1]
-                    last_message = [to_nickname, msg]
-                    msg = ' '.join(msg.split(" ")[2:])
-                    msg = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(msg, True)) + ";" + msg
-                    send(msg)
+            # Se o pacote for um token:
+            if data == "9000":
+                token = int(data)
+                if len(message_list) > 0:
+                    msg = message_list.pop(0)
+                    if msg.startswith("/priv "):
+                        to_nickname = msg.split(" ")[1]
+                        last_message = [to_nickname, msg]
+                        msg = ' '.join(msg.split(" ")[2:])
+                        msg = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(msg, True)) + ";" + msg
+                        send(msg)
+                    else:
+                        msg = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(msg, True)) + ";" + msg
+                        last_message = ["TODOS", msg]
+                        send(msg)
                 else:
-                    msg = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(msg, True)) + ";" + msg
-                    last_message = ["TODOS", msg]
-                    send(msg)
-            else:
-                token = -1
-                send("9000")
+                    token = -1
+                    send("9000")
+            
+            # Se o pacote for uma menssagem:
+            elif data.startswith("7777:"):
+                header = data.split(":")[1].split(";")[0]
+                from_nickname = data.split(":")[1].split(";")[1]
+                to_nickname = data.split(":")[1].split(";")[2]
+                crc = data.split(":")[1].split(";")[3]
+                msg = data.split(":")[1].split(";")[4]
+                
+                # Se a menssagem é para todos:
+                if to_nickname == "TODOS":         
+                    print(from_nickname + " (global): " + msg)
+                    # Se não foi eu que mandei a menssagem:
+                    if nickname != from_nickname:       
+                        send(data)
+                    # Se foi eu que mandei a menssagem:
+                    else:                               
+                        token = -1
+                        send("9000")
+                
+                # Se a menssagem é só para mim:
+                elif to_nickname == nickname  and header == "naoexiste": 
+                    # Se a menssagem chegou com erro:      
+                    if crc != str(crc32(msg, False)):          
+                        send("7777:NACK;" + from_nickname + ";" + to_nickname + ";" + crc + ";" + msg)
+                    # Se não foi eu que mandei a menssagem:
+                    elif nickname != from_nickname:       
+                        print(from_nickname + ": " + msg)
+                        send("7777:ACK;" + from_nickname + ";" + to_nickname + ";" + crc + ";" + msg)
+                    # Se foi eu que mandei a menssagem:
+                    else:                               
+                        print(from_nickname + " (eu): " + msg)
+                        token = -1
+                        send("9000")
+                
+                # Se a menssagem é para outro nó na rede:
+                else:                  
+                    # Se não foi eu que mandei a menssagem:             
+                    if nickname != from_nickname:       
+                        send(data)
+                    # Se foi eu que mandei a menssagem:
+                    else:             
+                        # Se o outro nó recebeu a menssagem:                  
+                        if header == "ACK":                 
+                            token = -1
+                            send("9000")
+                        # Se o outro nó recebeu a menssagem com erro:
+                        elif header == "NACK":             
+                            message_list = [last_message[1]] + message_list
+                            print("SYSTEM: O nó '" + to_nickname + "' recebeu a menssagem com erro. (msg: " + msg + ")")
+                            token = -1
+                            send("9000")
+                        # Se o outro nó não existe:
+                        elif header == "naoexiste":         
+                            print("SYSTEM: O nó '" + to_nickname + "' não existe. (msg: " + msg + ")")
+                            token = -1
+                            send("9000")
+                            
+        except ConnectionResetError:
+            pass
         
-        # Se o pacote for uma menssagem:
-        elif data.startswith("7777:"):
-            header = data.split(":")[1].split(";")[0]
-            from_nickname = data.split(":")[1].split(";")[1]
-            to_nickname = data.split(":")[1].split(";")[2]
-            crc = data.split(":")[1].split(";")[3]
-            msg = data.split(":")[1].split(";")[4]
-            
-            # Se a menssagem é para todos:
-            if to_nickname == "TODOS":         
-                print(from_nickname + " (global): " + msg)
-                # Se não foi eu que mandei a menssagem:
-                if nickname != from_nickname:       
-                    send(data)
-                # Se foi eu que mandei a menssagem:
-                else:                               
-                    token = -1
-                    send("9000")
-            
-            # Se a menssagem é só para mim:
-            elif to_nickname == nickname  and header == "naoexiste": 
-                # Se a menssagem chegou com erro:      
-                if crc != str(crc32(msg, False)):          
-                    send("7777:NACK;" + from_nickname + ";" + to_nickname + ";" + crc + ";" + msg)
-                # Se não foi eu que mandei a menssagem:
-                elif nickname != from_nickname:       
-                    print(from_nickname + ": " + msg)
-                    send("7777:ACK;" + from_nickname + ";" + to_nickname + ";" + crc + ";" + msg)
-                # Se foi eu que mandei a menssagem:
-                else:                               
-                    print(from_nickname + " (eu): " + msg)
-                    token = -1
-                    send("9000")
-            
-            # Se a menssagem é para outro nó na rede:
-            else:                  
-                # Se não foi eu que mandei a menssagem:             
-                if nickname != from_nickname:       
-                    send(data)
-                # Se foi eu que mandei a menssagem:
-                else:             
-                    # Se o outro nó recebeu a menssagem:                  
-                    if header == "ACK":                 
-                        token = -1
-                        send("9000")
-                    # Se o outro nó recebeu a menssagem com erro:
-                    elif header == "NACK":             
-                        message_list = [last_message[1]] + message_list
-                        print("SYSTEM: O nó '" + to_nickname + "' recebeu a menssagem com erro. (msg: " + msg + ")")
-                        token = -1
-                        send("9000")
-                    # Se o outro nó não existe:
-                    elif header == "naoexiste":         
-                        print("SYSTEM: O nó '" + to_nickname + "' não existe. (msg: " + msg + ")")
-                        token = -1
-                        send("9000")
+        
 
 # Uma thread executa essa função para lidar com o input de mensagens no terminal.             
 def handle_input():
@@ -172,7 +178,6 @@ print("  → Delay de menssagem: " + str(delay) + " sec")
 print("  → Token generation status: " + str(gen_token))
 
 if gen_token:
-    token = 9000
     handle_token_thread = threading.Thread(target=handle_token)
     handle_token_thread.start()
 
