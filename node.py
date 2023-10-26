@@ -144,17 +144,21 @@ def handle_input():
     # Loop para ficar esperando por input de mensagens.
     while True:
         user_input = input("")
+        # Se for uma mensagem privada:
         if user_input.startswith("/priv "):
             to_nickname = user_input.split(" ")[1]
             text = ' '.join(user_input.split(" ")[2:])
             new_message = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(text, True)) + ";" + text
             last_message = new_message
+        # Se for uma menssagem global:
         else:
             new_message = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(user_input, True)) + ";" + user_input
             last_message = new_message
-            
+        
+        # Se tem espaço na lista de mensagens:
         if len(message_list) < 10:
             message_list.append(new_message)
+        # Se não tem espaço na lista de mensagens:
         else:
             print("SYSTEM: Message list is full. (msg: " + user_input + ")")
 
