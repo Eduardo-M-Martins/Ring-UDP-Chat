@@ -1,21 +1,32 @@
+##############################################################################################################
+
+# Eduardo Martins, Bernardo Fiorini e Nathan Mello 
+
+##############################################################################################################
+# Imports, variáveis e constantes globais:
+
+import binascii
 import json
 import random
+from socket import *
 import time
 import threading
-import binascii
-from socket import *
 
-ip_destny, nickname, delay, token, gen_token = "", "", 0, -1, False
-last_message = ["", ""]
-message_list = []
-udp_socket = socket(AF_INET, SOCK_DGRAM)
+last_message, message_list = [], []
+ip_destny, nickname = "", ""
+delay, token = 0, -1
+gen_token = False
 
+SOCKET = socket(AF_INET, SOCK_DGRAM)
+PORT = 5000
 ERRO = True
 
 ##############################################################################################################
+# Funções:
 
+# Essa função lê o arquivo 'config.json' para setar as configurações iniciais do nodo.
 def config():
-    global ip_destny, nickname, delay, gen_token, token, message_list, udp_socket, last_message
+    global ip_destny, nickname, delay, gen_token, token
     with open("config.json", "r") as f:
         config = json.load(f)
         f.close()
@@ -25,10 +36,12 @@ def config():
     gen_token = bool(config["gen_token"])
     token = -1
 
+# Uma thread executa essa função para lidar com o token. Só executa se 'gen_token' estiver em 'True' no 'config.json'.
 def handle_token():
-    global ip_destny, nickname, delay, gen_token, token, message_list, udp_socket, last_message
+    global ip_destny, nickname, delay, gen_token, token, message_list, SOCKET, last_message
     send("9000")
 
+# Essa função lida com a conversão para crc32. Possui por padrão uma probabilidade de induzir um erro.
 def crc32(msg, generating):
     if ERRO and generating:
         random.seed(a=None, version=2)
@@ -37,19 +50,21 @@ def crc32(msg, generating):
             return -1  
     return binascii.crc32(msg.encode()) & 0xFFFFFFFF
 
+# Uma thread executa essa função para lidar com o recebimento de pacotes.
 def recive():
-    global ip_destny, nickname, delay, gen_token, token, message_list, udp_socket, last_message
+    global ip_destny, nickname, delay, gen_token, token, message_list, SOCKET, last_message
     
-    port = 5000
-    udp_socket.bind(("0.0.0.0", port))
+    SOCKET.bind(("0.0.0.0", PORT))
     
     print("\n# === === === === === === Port === === === === === === #\n")
-    print("  → UDP: " + str(port))
+    print("  → UDP: " + str(PORT))
     
+    # Loop para ficar esperando por pacotes.
     while True:
-        data, _ = udp_socket.recvfrom(1024)
+        data, _ = SOCKET.recvfrom(1024)
         data = data.decode("utf-8")
         
+        # Se o pacote for um token:
         if data == "9000":
             token = int(data)
             if len(message_list) > 0:
@@ -68,6 +83,7 @@ def recive():
                 token = -1
                 send("9000")
         
+        # Se o pacote for uma menssagem:
         elif data.startswith("7777:"):
             header = data.split(":")[1].split(";")[0]
             from_nickname = data.split(":")[1].split(";")[1]
@@ -75,60 +91,77 @@ def recive():
             crc = data.split(":")[1].split(";")[3]
             msg = data.split(":")[1].split(";")[4]
             
-            if to_nickname == "TODOS":          # Se a menssagem é para todos
+            # Se a menssagem é para todos:
+            if to_nickname == "TODOS":         
                 print(from_nickname + " (global): " + msg)
-                if nickname != from_nickname:       # Se não foi eu que mandei a menssagem
+                # Se não foi eu que mandei a menssagem:
+                if nickname != from_nickname:       
                     send(data)
-                else:                               # Se foi eu que mandei a menssagem
+                # Se foi eu que mandei a menssagem:
+                else:                               
                     token = -1
                     send("9000")
-                
-            elif to_nickname == nickname  and header == "naoexiste":       # Se a menssagem é só para mim
-                if crc != str(crc32(msg, False)):          # Se a menssagem chegou com erro
+            
+            # Se a menssagem é só para mim:
+            elif to_nickname == nickname  and header == "naoexiste": 
+                # Se a menssagem chegou com erro:      
+                if crc != str(crc32(msg, False)):          
                     send("7777:NACK;" + from_nickname + ";" + to_nickname + ";" + crc + ";" + msg)
-                elif nickname != from_nickname:       # Se não foi eu que mandei a menssagem
+                # Se não foi eu que mandei a menssagem:
+                elif nickname != from_nickname:       
                     print(from_nickname + ": " + msg)
                     send("7777:ACK;" + from_nickname + ";" + to_nickname + ";" + crc + ";" + msg)
-                else:                               # Se foi eu que mandei a menssagem
+                # Se foi eu que mandei a menssagem:
+                else:                               
                     print(from_nickname + " (eu): " + msg)
                     token = -1
                     send("9000")
-                    
-            else:                               # Se a menssagem é para outro nó na rede
-                if nickname != from_nickname:       # Se não foi eu que mandei a menssagem
+            
+            # Se a menssagem é para outro nó na rede:
+            else:                  
+                # Se não foi eu que mandei a menssagem:             
+                if nickname != from_nickname:       
                     send(data)
-                else:                               # Se foi eu que mandei a menssagem
-                    if header == "ACK":                 # Se o outro nó recebeu a menssagem
+                # Se foi eu que mandei a menssagem:
+                else:             
+                    # Se o outro nó recebeu a menssagem:                  
+                    if header == "ACK":                 
                         token = -1
                         send("9000")
-                    elif header == "NACK":              # Se o outro nó recebeu a menssagem com erro
+                    # Se o outro nó recebeu a menssagem com erro:
+                    elif header == "NACK":             
                         message_list = [last_message[1]] + message_list
                         print("SYSTEM: O nó '" + to_nickname + "' recebeu a menssagem com erro. (msg: " + msg + ")")
                         token = -1
                         send("9000")
-                    elif header == "naoexiste":         # Se o outro nó não existe
+                    # Se o outro nó não existe:
+                    elif header == "naoexiste":         
                         print("SYSTEM: O nó '" + to_nickname + "' não existe. (msg: " + msg + ")")
                         token = -1
                         send("9000")
-                        
+
+# Uma thread executa essa função para lidar com o input de mensagens no terminal.             
 def handle_input():
-    global ip_destny, nickname, delay, gen_token, token, message_list, udp_socket, last_message
+    global message_list
     print("\n# === === === === === === Chat === === === === === === #")
     print("   ↓   ↓   ↓   ↓   ↓   ↓        ↓   ↓   ↓   ↓   ↓   ↓\n")
     
+    # Loop para ficar esperando por input de mensagens.
     while True:
         new_message = input("")
         if len(message_list) < 10:
             message_list.append(new_message)
         else:
             print("SYSTEM: Message list is full. (msg: " + new_message + ")")
-            
+
+# Essa função serve para enviar uma mensagem ao nodo referenciado no 'config.json'.
 def send(msg):
-    global ip_destny, nickname, delay, gen_token, token, message_list, udp_socket, last_message
+    global ip_destny, delay, SOCKET
     time.sleep(delay)
-    udp_socket.sendto(msg.encode("utf-8"), (ip_destny.split(":")[0], int(ip_destny.split(":")[1])))
+    SOCKET.sendto(msg.encode("utf-8"), (ip_destny.split(":")[0], int(ip_destny.split(":")[1])))
 
 ##############################################################################################################
+# Main:
 
 config()
 

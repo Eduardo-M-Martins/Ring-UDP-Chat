@@ -1,5 +1,5 @@
 {
-    "ip_destny" : "192.168.13.107:5000",
+    "ip_destny" : "10.132.248.251:5000",
     "nickname"  : "Alpha",
     "delay"     : "1",
     "gen_token" : "True"
