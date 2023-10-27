@@ -21,6 +21,7 @@ gen_token = False
 
 SOCKET = socket(AF_INET, SOCK_DGRAM)
 TOKEN = "9000"
+TOKEN_EXCESS = 2
 TOKEN_TIMEOUT = 15
 PORT = 5000
 ERRO = True
@@ -31,6 +32,7 @@ ERRO = True
 # Essa função lê o arquivo 'config.json' para setar as configurações iniciais do nodo.
 def config():
     global ip_destny, nickname, delay, token, gen_token
+    
     with open("config.json", "r") as f:
         config = json.load(f)
         f.close()
@@ -43,13 +45,17 @@ def config():
 # Uma thread executa essa função para lidar com o token. Só executa se 'gen_token' estiver em 'True' no 'config.json'.
 def handle_token():
     global last_token_date
+    
+    # Loop para monitorar o token.
     while True:
-        time.sleep(TOKEN_TIMEOUT/2)
+        # Se o token demorar mutio para chegar:
         if (datetime.now() - last_token_date).total_seconds() >= TOKEN_TIMEOUT:
+            # Se não é o primeiro a ser gerado token:
             if last_token_date != datetime(1900, 1, 1, 0, 0):
                 print("SYSTEM: Token timeout. New token generated.")
             last_token_date = datetime.now()
             send(TOKEN)
+        time.sleep(TOKEN_TIMEOUT/2)
 
 # Essa função lida com a conversão para crc32. Possui por padrão uma probabilidade de induzir um erro.
 def crc32(msg, generating):
@@ -62,7 +68,7 @@ def crc32(msg, generating):
 
 # Uma thread executa essa função para lidar com o recebimento de pacotes.
 def recive():
-    global message_list, last_msg, nickname, token
+    global last_token_date, message_list, last_msg, nickname, token
     
     SOCKET.bind(("0.0.0.0", PORT))
     
@@ -77,7 +83,8 @@ def recive():
         
             # Se o pacote for um token:
             if data == TOKEN:
-                token = int(data)
+                last_token_date = datetime.now()
+                token = TOKEN
                 if len(message_list) > 0:
                     msg = message_list.pop(0)
                     send(msg)
@@ -151,6 +158,7 @@ def recive():
 # Uma thread executa essa função para lidar com o input de mensagens no terminal.             
 def handle_input():
     global message_list, nickname
+    
     print("\n# === === === === === === Chat === === === === === === #")
     print("   ↓   ↓   ↓   ↓   ↓   ↓        ↓   ↓   ↓   ↓   ↓   ↓\n")
     
