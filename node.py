@@ -21,7 +21,7 @@ gen_token = False
 
 SOCKET = socket(AF_INET, SOCK_DGRAM)
 TOKEN = "9000"
-TOKEN_EXCESS = 2
+TOKEN_EXCESS = 1
 TOKEN_TIMEOUT = 15
 PORT = 5000
 ERRO = True
@@ -55,7 +55,7 @@ def handle_token():
                 print("SYSTEM: Token timeout. New token generated.")
             last_token_date = datetime.now()
             send(TOKEN)
-        time.sleep(TOKEN_TIMEOUT/2)
+        time.sleep(1)
 
 # Essa função lida com a conversão para crc32. Possui por padrão uma probabilidade de induzir um erro.
 def crc32(msg, generating):
@@ -83,14 +83,16 @@ def recive():
         
             # Se o pacote for um token:
             if data == TOKEN:
-                last_token_date = datetime.now()
-                token = TOKEN
-                if len(message_list) > 0:
-                    msg = message_list.pop(0)
-                    send(msg)
-                else:
-                    token = -1
-                    send(TOKEN)
+                # Se o tken foi recebido após o tempo mínimo:
+                if (datetime.now() - last_token_date).total_seconds() >= TOKEN_EXCESS:
+                    last_token_date = datetime.now()
+                    token = TOKEN
+                    if len(message_list) > 0:
+                        msg = message_list.pop(0)
+                        send(msg)
+                    else:
+                        token = -1
+                        send(TOKEN)
             
             # Se o pacote for uma menssagem:
             elif data.startswith("7777:"):
