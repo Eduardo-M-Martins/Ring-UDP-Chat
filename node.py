@@ -156,7 +156,7 @@ def recive():
                             send(TOKEN)
                         # Se o outro nó recebeu a menssagem com erro:
                         elif header == "NACK":  
-                            last_msg_text = last_msg.split(";")[4]
+                            last_msg_text = ";".join(last_msg.split(";")[4:])
                             fixed_crc32 = crc32(last_msg_text, False)
                             last_msg = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(fixed_crc32) + ";" + last_msg_text
                             message_list = [last_msg] + message_list
