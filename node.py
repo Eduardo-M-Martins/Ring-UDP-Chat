@@ -115,7 +115,7 @@ def recive():
                 from_nickname = data.split(":")[1].split(";")[1]
                 to_nickname = data.split(":")[1].split(";")[2]
                 crc = data.split(":")[1].split(";")[3]
-                msg = data.split(":")[1].split(";")[4]
+                msg = ";".join(data.split(":")[1].split(";")[4:])
                 
                 # Se a menssagem é para todos:
                 if to_nickname == "TODOS":         
