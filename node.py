@@ -15,7 +15,7 @@ import threading
 
 last_token_date = datetime(1900, 1, 1, 0, 0)
 message_list = []
-ip_destny, last_msg, nickname = "", "", ""
+ip_destiny, last_msg, nickname = "", "", ""
 delay, token = 0, -1
 gen_token = False
 
@@ -42,12 +42,12 @@ WARNING_STYLE = "\033[1m\033[93m"
 
 # Essa função lê o arquivo 'config.json' para setar as configurações iniciais do nodo.
 def config():
-    global ip_destny, nickname, delay, token, gen_token
+    global ip_destiny, nickname, delay, token, gen_token
     
     with open("config.json", "r") as f:
         config = json.load(f)
         f.close()
-    ip_destny = str(config["ip_destny"])
+    ip_destiny = str(config["ip_destiny"])
     nickname = str(config["nickname"])
     delay = int(config["delay"])
     gen_token = bool(config["gen_token"])
@@ -105,6 +105,8 @@ def recive():
                     else:
                         token = -1
                         send(TOKEN)
+                else:
+                    print(SYSTEM_STYLE + "SYSTEM: Token arrived too soon. Token ignored." + END_STYLE)
             
             # Se o pacote for uma menssagem:
             elif data.startswith("7777:"):
@@ -158,12 +160,12 @@ def recive():
                             fixed_crc32 = crc32(last_msg_text, False)
                             last_msg = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(fixed_crc32) + ";" + last_msg_text
                             message_list = [last_msg] + message_list
-                            print(SYSTEM_STYLE + "SYSTEM: O nó '" + to_nickname + "' recebeu a menssagem com erro. (msg: " + msg + ")" + END_STYLE)
+                            print(SYSTEM_STYLE + "SYSTEM: The node '" + to_nickname + "' received the message with error. (msg: " + msg + ")" + END_STYLE)
                             token = -1
                             send(TOKEN)
                         # Se o outro nó não existe:
                         elif header == "naoexiste":         
-                            print(SYSTEM_STYLE + "SYSTEM: O nó '" + to_nickname + "' não existe. (msg: " + msg + ")" + END_STYLE)
+                            print(SYSTEM_STYLE + "SYSTEM: The node '" + to_nickname + "' doesn't exist. (msg: " + msg + ")" + END_STYLE)
                             token = -1
                             send(TOKEN)
                             
@@ -198,10 +200,10 @@ def handle_input():
 
 # Essa função serve para enviar uma mensagem ao nodo referenciado no 'config.json'.
 def send(msg):
-    global ip_destny, last_msg, delay
+    global ip_destiny, last_msg, delay
     time.sleep(delay)
     last_msg = msg
-    SOCKET.sendto(msg.encode("utf-8"), (ip_destny.split(":")[0], int(ip_destny.split(":")[1])))
+    SOCKET.sendto(msg.encode("utf-8"), (ip_destiny.split(":")[0], int(ip_destiny.split(":")[1])))
 
 ##############################################################################################################
 # Main:
@@ -210,8 +212,8 @@ config()
 
 print(HEADER_STYLE + "\n# === === === === === === Node === === === === === === #\n" + END_STYLE)
 print(TITLE_STYLE + "    Nickname: " + END_STYLE + DARK_STYLE + nickname + END_STYLE)
-print(TITLE_STYLE + "    IP de destino: " + END_STYLE + DARK_STYLE + ip_destny + END_STYLE)
-print(TITLE_STYLE + "    Delay de menssagem: " + END_STYLE + DARK_STYLE + str(delay) + " sec" + END_STYLE)
+print(TITLE_STYLE + "    IP destiny: " + END_STYLE + DARK_STYLE + ip_destiny + END_STYLE)
+print(TITLE_STYLE + "    Message delay: " + END_STYLE + DARK_STYLE + str(delay) + " sec" + END_STYLE)
 print(TITLE_STYLE + "    Token generation status: " + END_STYLE + DARK_STYLE + str(gen_token) + END_STYLE)
 
 if gen_token:
