@@ -6,12 +6,14 @@
 # Imports, variáveis e constantes globais:
 
 import binascii
+from datetime import datetime
 import json
 import random
 from socket import *
 import time
 import threading
 
+last_token_date = datetime(1900, 1, 1, 0, 0)
 message_list = []
 ip_destny, last_msg, nickname = "", "", ""
 delay, token = 0, -1
@@ -19,6 +21,7 @@ gen_token = False
 
 SOCKET = socket(AF_INET, SOCK_DGRAM)
 TOKEN = "9000"
+TOKEN_TIMEOUT = 15
 PORT = 5000
 ERRO = True
 
@@ -39,8 +42,14 @@ def config():
 
 # Uma thread executa essa função para lidar com o token. Só executa se 'gen_token' estiver em 'True' no 'config.json'.
 def handle_token():
-    global message_list, ip_destny, last_msg, nickname, delay, token, gen_token
-    send(TOKEN)
+    global last_token_date
+    while True:
+        time.sleep(TOKEN_TIMEOUT/2)
+        if (datetime.now() - last_token_date).total_seconds() >= TOKEN_TIMEOUT:
+            if last_token_date != datetime(1900, 1, 1, 0, 0):
+                print("SYSTEM: Token timeout. New token generated.")
+            last_token_date = datetime.now()
+            send(TOKEN)
 
 # Essa função lida com a conversão para crc32. Possui por padrão uma probabilidade de induzir um erro.
 def crc32(msg, generating):
