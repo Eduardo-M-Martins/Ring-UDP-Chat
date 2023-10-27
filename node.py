@@ -13,11 +13,12 @@ import time
 import threading
 
 message_list = []
-ip_destny, last_message, nickname = "", "", ""
+ip_destny, last_msg, nickname = "", "", ""
 delay, token = 0, -1
 gen_token = False
 
 SOCKET = socket(AF_INET, SOCK_DGRAM)
+TOKEN = "9000"
 PORT = 5000
 ERRO = True
 
@@ -26,7 +27,7 @@ ERRO = True
 
 # Essa função lê o arquivo 'config.json' para setar as configurações iniciais do nodo.
 def config():
-    global ip_destny, nickname, delay, gen_token, token
+    global ip_destny, nickname, delay, token, gen_token
     with open("config.json", "r") as f:
         config = json.load(f)
         f.close()
@@ -38,8 +39,8 @@ def config():
 
 # Uma thread executa essa função para lidar com o token. Só executa se 'gen_token' estiver em 'True' no 'config.json'.
 def handle_token():
-    global ip_destny, nickname, delay, gen_token, token, message_list, SOCKET, last_message
-    send("9000")
+    global message_list, ip_destny, last_msg, nickname, delay, token, gen_token
+    send(TOKEN)
 
 # Essa função lida com a conversão para crc32. Possui por padrão uma probabilidade de induzir um erro.
 def crc32(msg, generating):
@@ -52,7 +53,7 @@ def crc32(msg, generating):
 
 # Uma thread executa essa função para lidar com o recebimento de pacotes.
 def recive():
-    global ip_destny, nickname, delay, gen_token, token, message_list, SOCKET, last_message
+    global message_list, last_msg, nickname, token
     
     SOCKET.bind(("0.0.0.0", PORT))
     
@@ -66,14 +67,14 @@ def recive():
             data = data.decode("utf-8")
         
             # Se o pacote for um token:
-            if data == "9000":
+            if data == TOKEN:
                 token = int(data)
                 if len(message_list) > 0:
                     msg = message_list.pop(0)
                     send(msg)
                 else:
                     token = -1
-                    send("9000")
+                    send(TOKEN)
             
             # Se o pacote for uma menssagem:
             elif data.startswith("7777:"):
@@ -92,7 +93,7 @@ def recive():
                     # Se foi eu que mandei a menssagem:
                     else:                               
                         token = -1
-                        send("9000")
+                        send(TOKEN)
                 
                 # Se a menssagem é só para mim:
                 elif to_nickname == nickname  and header == "naoexiste": 
@@ -107,7 +108,7 @@ def recive():
                     else:                               
                         print(from_nickname + " (eu): " + msg)
                         token = -1
-                        send("9000")
+                        send(TOKEN)
                 
                 # Se a menssagem é para outro nó na rede:
                 else:                  
@@ -119,25 +120,28 @@ def recive():
                         # Se o outro nó recebeu a menssagem:                  
                         if header == "ACK":                 
                             token = -1
-                            send("9000")
+                            send(TOKEN)
                         # Se o outro nó recebeu a menssagem com erro:
-                        elif header == "NACK":             
-                            message_list = [last_message] + message_list
+                        elif header == "NACK":  
+                            last_msg_text = last_msg.split(";")[4]
+                            fixed_crc32 = crc32(last_msg_text, False)
+                            last_msg = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(fixed_crc32) + ";" + last_msg_text
+                            message_list = [last_msg] + message_list
                             print("SYSTEM: O nó '" + to_nickname + "' recebeu a menssagem com erro. (msg: " + msg + ")")
                             token = -1
-                            send("9000")
+                            send(TOKEN)
                         # Se o outro nó não existe:
                         elif header == "naoexiste":         
                             print("SYSTEM: O nó '" + to_nickname + "' não existe. (msg: " + msg + ")")
                             token = -1
-                            send("9000")
+                            send(TOKEN)
                             
         except ConnectionResetError:
             pass
         
 # Uma thread executa essa função para lidar com o input de mensagens no terminal.             
 def handle_input():
-    global ip_destny, nickname, delay, gen_token, token, message_list, SOCKET, last_message
+    global message_list, nickname
     print("\n# === === === === === === Chat === === === === === === #")
     print("   ↓   ↓   ↓   ↓   ↓   ↓        ↓   ↓   ↓   ↓   ↓   ↓\n")
     
@@ -149,11 +153,9 @@ def handle_input():
             to_nickname = user_input.split(" ")[1]
             text = ' '.join(user_input.split(" ")[2:])
             new_message = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(text, True)) + ";" + text
-            last_message = new_message
         # Se for uma menssagem global:
         else:
             new_message = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(user_input, True)) + ";" + user_input
-            last_message = new_message
         
         # Se tem espaço na lista de mensagens:
         if len(message_list) < 10:
@@ -164,8 +166,9 @@ def handle_input():
 
 # Essa função serve para enviar uma mensagem ao nodo referenciado no 'config.json'.
 def send(msg):
-    global ip_destny, delay, SOCKET
+    global ip_destny, last_msg, delay
     time.sleep(delay)
+    last_msg = msg
     SOCKET.sendto(msg.encode("utf-8"), (ip_destny.split(":")[0], int(ip_destny.split(":")[1])))
 
 ##############################################################################################################
