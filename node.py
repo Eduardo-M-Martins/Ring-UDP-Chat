@@ -17,7 +17,7 @@ last_token_date = datetime(1900, 1, 1, 0, 0)
 message_list = []
 ip_destiny, last_msg, nickname = "", "", ""
 delay, token = 0, -1
-gen_token = False
+gen_token, recive_token = False, True
 
 SOCKET = socket(AF_INET, SOCK_DGRAM)    # Socket.
 TOKEN = "9000"                          # Define o token.
@@ -79,7 +79,7 @@ def crc32(msg, generating):
 
 # Uma thread executa essa função para lidar com o recebimento de pacotes.
 def recive():
-    global last_token_date, message_list, last_msg, nickname, token
+    global last_token_date, message_list, last_msg, nickname, token, recive_token
     
     SOCKET.bind(("0.0.0.0", PORT))
     
@@ -93,7 +93,7 @@ def recive():
             data = data.decode("utf-8")
         
             # Se o pacote for um token:
-            if data == TOKEN:
+            if data == TOKEN and recive_token:
                 # Se o tken foi recebido após o tempo mínimo:
                 if (datetime.now() - last_token_date).total_seconds() >= TOKEN_EXCESS:
                     last_token_date = datetime.now()
@@ -174,7 +174,7 @@ def recive():
         
 # Uma thread executa essa função para lidar com o input de mensagens no terminal.             
 def handle_input():
-    global message_list, nickname
+    global message_list, nickname, recive_token
     
     print(HEADER_STYLE + "\n# === === === === === === Chat === === === === === === #" + END_STYLE)
     print(TITLE_STYLE + "   ↓   ↓   ↓   ↓   ↓   ↓        ↓   ↓   ↓   ↓   ↓   ↓\n" + END_STYLE)
@@ -187,6 +187,15 @@ def handle_input():
             to_nickname = user_input.split(" ")[1]
             text = ' '.join(user_input.split(" ")[2:])
             new_message = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(text, True)) + ";" + text
+        # Se for um comando para bloquear o Token:
+        elif user_input == "/block":
+            if recive_token: print(SYSTEM_STYLE + "SYSTEM: Token blocked." + END_STYLE)
+            recive_token = False
+            continue
+        elif user_input == "/free":
+            if not recive_token: print(SYSTEM_STYLE + "SYSTEM: Token free." + END_STYLE)
+            recive_token = True
+            continue
         # Se for uma menssagem global:
         else:
             new_message = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(user_input, False)) + ";" + user_input

@@ -1,5 +1,5 @@
 {
-    "ip_destiny" : "192.168.44.1:5000",
+    "ip_destiny" : "192.168.1.101:5000",
     "nickname"  : "Alpha",
     "delay"     : "5",
     "gen_token" : true
