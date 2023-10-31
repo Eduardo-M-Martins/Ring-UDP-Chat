@@ -111,11 +111,12 @@ def recive():
             # Se o pacote for uma menssagem:
             elif data.startswith("7777:"):
                 if PRINT: print(WARNING_STYLE + "Package Check: " + data + END_STYLE)
-                header = data.split(":")[1].split(";")[0]
-                from_nickname = data.split(":")[1].split(";")[1]
-                to_nickname = data.split(":")[1].split(";")[2]
-                crc = data.split(":")[1].split(";")[3]
-                msg = ";".join(data.split(":")[1].split(";")[4:])
+                header = ";".join(data.split(":")[1:]).split(";")[0]
+                from_nickname = ";".join(data.split(":")[1:]).split(";")[1]
+                to_nickname = ";".join(data.split(":")[1:]).split(";")[2]
+                crc = ";".join(data.split(":")[1:]).split(";")[3]
+                msg = ";".join(";".join(data.split(":")[1:]).split(";")[4:])
+                
                 
                 # Se a menssagem é para todos:
                 if to_nickname == "TODOS":         
@@ -132,11 +133,11 @@ def recive():
                 elif to_nickname == nickname  and header == "naoexiste": 
                     # Se a menssagem chegou com erro:      
                     if crc != str(crc32(msg, False)):          
-                        send("7777:NACK;" + from_nickname + ";" + to_nickname + ";" + crc + ";" + msg)
+                        send("7777:NACK;" + from_nickname + ":" + to_nickname + ";" + crc + ";" + msg)
                     # Se não foi eu que mandei a menssagem:
                     elif nickname != from_nickname:       
                         print(PRIV_STYLE + from_nickname + ": " + END_STYLE + msg)
-                        send("7777:ACK;" + from_nickname + ";" + to_nickname + ";" + crc + ";" + msg)
+                        send("7777:ACK;" + from_nickname + ":" + to_nickname + ";" + crc + ";" + msg)
                     # Se foi eu que mandei a menssagem:
                     else:                               
                         print(PRIV_STYLE + from_nickname + ": " + END_STYLE + TEXT_STYLE + msg + END_STYLE)
@@ -156,9 +157,9 @@ def recive():
                             send(TOKEN)
                         # Se o outro nó recebeu a menssagem com erro:
                         elif header == "NACK":  
-                            last_msg_text = ";".join(last_msg.split(";")[4:])
+                            last_msg_text = ";".join(";".join(last_msg.split(":")[1:]).split(";")[4:])
                             fixed_crc32 = crc32(last_msg_text, False)
-                            last_msg = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(fixed_crc32) + ";" + last_msg_text
+                            last_msg = "7777:naoexiste;" + nickname + ":" + to_nickname + ";" + str(fixed_crc32) + ";" + last_msg_text
                             message_list = [last_msg] + message_list
                             print(SYSTEM_STYLE + "SYSTEM: The node '" + to_nickname + "' received the message with error. (msg: " + msg + ")" + END_STYLE)
                             token = -1
@@ -186,7 +187,7 @@ def handle_input():
         if user_input.startswith("/priv "):
             to_nickname = user_input.split(" ")[1]
             text = ' '.join(user_input.split(" ")[2:])
-            new_message = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(text, True)) + ";" + text
+            new_message = "7777:naoexiste;" + nickname + ":" + to_nickname + ";" + str(crc32(text, True)) + ";" + text
         # Se for um comando para bloquear o Token:
         elif user_input == "/block":
             if recive_token: print(SYSTEM_STYLE + "SYSTEM: Token blocked." + END_STYLE)
@@ -198,7 +199,7 @@ def handle_input():
             continue
         # Se for uma menssagem global:
         else:
-            new_message = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(user_input, False)) + ";" + user_input
+            new_message = "7777:naoexiste;" + nickname + ":TODOS;" + str(crc32(user_input, False)) + ";" + user_input
         
         # Se tem espaço na lista de mensagens:
         if len(message_list) < 10:
