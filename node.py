@@ -16,13 +16,13 @@ import threading
 last_token_date = datetime(1900, 1, 1, 0, 0)
 message_list = []
 ip_destiny, last_msg, nickname = "", "", ""
-delay, token = 0, -1
-gen_token, recive_token = False, True
+delay = 0
+gen_token, recieve_token = False, True
 
 SOCKET = socket(AF_INET, SOCK_DGRAM)    # Socket.
 TOKEN = "9000"                          # Define o token.
-TOKEN_EXCESS = 1                        # Tempo mínimo entre a chegada de Tokens.
-TOKEN_TIMEOUT = 15                      # Tempo máximo sem receber Tokens.
+TOKEN_EXCESS = 3                        # Tempo mínimo entre a chegada de Tokens.
+TOKEN_TIMEOUT = 30                      # Tempo máximo sem receber Tokens.
 PORT = 5000                             # Porta da conexão.
 PRINT = True                            # Define se os detalhes do Token e pacotes serão impressos no chat.
 ERRO = True                             # Define se o gerador de erros deve estar ativado.
@@ -42,7 +42,7 @@ WARNING_STYLE = "\033[1m\033[93m"
 
 # Essa função lê o arquivo 'config.json' para setar as configurações iniciais do nodo.
 def config():
-    global ip_destiny, nickname, delay, token, gen_token
+    global ip_destiny, nickname, delay, gen_token
     
     with open("config.json", "r") as f:
         config = json.load(f)
@@ -51,7 +51,6 @@ def config():
     nickname = str(config["nickname"])
     delay = int(config["delay"])
     gen_token = bool(config["gen_token"])
-    token = -1
 
 # Uma thread executa essa função para lidar com o token. Só executa se 'gen_token' estiver em 'True' no 'config.json'.
 def handle_token():
@@ -79,7 +78,7 @@ def crc32(msg, generating):
 
 # Uma thread executa essa função para lidar com o recebimento de pacotes.
 def recive():
-    global last_token_date, message_list, last_msg, nickname, token, recive_token
+    global last_token_date, message_list, last_msg, nickname, recieve_token
     
     SOCKET.bind(("0.0.0.0", PORT))
     
@@ -93,17 +92,15 @@ def recive():
             data = data.decode("utf-8")
         
             # Se o pacote for um token:
-            if data == TOKEN and recive_token:
+            if data == TOKEN and recieve_token:
                 # Se o tken foi recebido após o tempo mínimo:
                 if (datetime.now() - last_token_date).total_seconds() >= TOKEN_EXCESS:
                     last_token_date = datetime.now()
-                    token = TOKEN
                     if PRINT: print(WARNING_STYLE + "Token Check: " + str(last_token_date.time()) + END_STYLE)
                     if len(message_list) > 0:
                         msg = message_list.pop(0)
                         send(msg)
                     else:
-                        token = -1
                         send(TOKEN)
                 else:
                     print(SYSTEM_STYLE + "SYSTEM: Token arrived too soon. Token ignored." + END_STYLE)
@@ -125,7 +122,6 @@ def recive():
                         send(data)
                     # Se foi eu que mandei a menssagem:
                     else:                               
-                        token = -1
                         send(TOKEN)
                 
                 # Se a menssagem é só para mim:
@@ -140,7 +136,6 @@ def recive():
                     # Se foi eu que mandei a menssagem:
                     else:                               
                         print(PRIV_STYLE + from_nickname + ": " + END_STYLE + TEXT_STYLE + msg + END_STYLE)
-                        token = -1
                         send(TOKEN)
                 
                 # Se a menssagem é para outro nó na rede:
@@ -152,7 +147,6 @@ def recive():
                     else:             
                         # Se o outro nó recebeu a menssagem:                  
                         if header == "ACK":                 
-                            token = -1
                             send(TOKEN)
                         # Se o outro nó recebeu a menssagem com erro:
                         elif header == "NACK":  
@@ -161,12 +155,10 @@ def recive():
                             last_msg = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(fixed_crc32) + ";" + last_msg_text
                             message_list = [last_msg] + message_list
                             print(SYSTEM_STYLE + "SYSTEM: The node '" + to_nickname + "' received the message with error. (msg: " + msg + ")" + END_STYLE)
-                            token = -1
                             send(TOKEN)
                         # Se o outro nó não existe:
                         elif header == "naoexiste":         
                             print(SYSTEM_STYLE + "SYSTEM: The node '" + to_nickname + "' doesn't exist. (msg: " + msg + ")" + END_STYLE)
-                            token = -1
                             send(TOKEN)
                             
         except ConnectionResetError:
@@ -174,7 +166,7 @@ def recive():
         
 # Uma thread executa essa função para lidar com o input de mensagens no terminal.             
 def handle_input():
-    global message_list, nickname, recive_token
+    global message_list, nickname, recieve_token
     
     print(HEADER_STYLE + "\n# === === === === === === Chat === === === === === === #" + END_STYLE)
     print(TITLE_STYLE + "   ↓   ↓   ↓   ↓   ↓   ↓        ↓   ↓   ↓   ↓   ↓   ↓\n" + END_STYLE)
@@ -189,18 +181,13 @@ def handle_input():
             new_message = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(text, True)) + ";" + text
         # Se for um comando para bloquear o Token:
         elif user_input == "/block":
-            if recive_token: print(SYSTEM_STYLE + "SYSTEM: Token blocked." + END_STYLE)
-            recive_token = False
+            if recieve_token: print(SYSTEM_STYLE + "SYSTEM: Token blocked." + END_STYLE)
+            recieve_token = False
             continue
         # Se for um comando para liberar o Token:
         elif user_input == "/free":
-            if not recive_token: print(SYSTEM_STYLE + "SYSTEM: Token free." + END_STYLE)
-            recive_token = True
-            continue
-        # Força um novo token na rede
-        elif user_input == "/add":
-            print(SYSTEM_STYLE + "SYSTEM: New token forced" + END_STYLE)
-            send(TOKEN)
+            if not recieve_token: print(SYSTEM_STYLE + "SYSTEM: Token free." + END_STYLE)
+            recieve_token = True
             continue
         # Se for uma menssagem global:
         else:
