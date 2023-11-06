@@ -209,7 +209,7 @@ def handle_input():
 
 # Essa função serve para enviar uma mensagem ao nodo referenciado no 'config.json'.
 def send(msg):
-    global ip_destiny, last_msg, delay
+    global ip_destiny, last_msg
     last_msg = msg
     SOCKET.sendto(msg.encode("utf-8"), (ip_destiny.split(":")[0], int(ip_destiny.split(":")[1])))
 
