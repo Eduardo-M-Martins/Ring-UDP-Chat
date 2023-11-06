@@ -17,11 +17,11 @@ last_token_date = datetime(1900, 1, 1, 0, 0)
 message_list = []
 ip_destiny, last_msg, nickname = "", "", ""
 delay = 0
-gen_token, recieve_token = False, True
+gen_token, receive_token = False, True
 
 SOCKET = socket(AF_INET, SOCK_DGRAM)    # Socket.
 TOKEN = "9000"                          # Define o token.
-TOKEN_EXCESS = 4                        # Tempo mínimo entre a chegada de Tokens.
+TOKEN_EXCESS = 2                        # Tempo mínimo entre a chegada de Tokens.
 TOKEN_TIMEOUT = 30                      # Tempo máximo sem receber Tokens.
 PORT = 5000                             # Porta da conexão.
 PRINT = True                            # Define se os detalhes do Token e pacotes serão impressos no chat.
@@ -56,7 +56,7 @@ def config():
 def handle_token():
     global last_token_date
     
-    time.sleep(0.25)
+    time.sleep(0.5)
     # Loop para monitorar o token.
     while True:
         # Se o token demorar mutio para chegar:
@@ -78,8 +78,8 @@ def crc32(msg, generating):
     return binascii.crc32(msg.encode()) & 0xFFFFFFFF
 
 # Uma thread executa essa função para lidar com o recebimento de pacotes.
-def recive():
-    global last_token_date, message_list, last_msg, nickname, recieve_token, delay
+def receive():
+    global last_token_date, message_list, last_msg, nickname, receive_token, delay
     
     SOCKET.bind(("0.0.0.0", PORT))
     
@@ -94,7 +94,7 @@ def recive():
             time.sleep(delay)
         
             # Se o pacote for um token:
-            if data == TOKEN and recieve_token:
+            if data == TOKEN and receive_token:
                 # Se o tken foi recebido após o tempo mínimo:
                 if (datetime.now() - last_token_date).total_seconds() >= TOKEN_EXCESS:
                     last_token_date = datetime.now()
@@ -168,7 +168,7 @@ def recive():
         
 # Uma thread executa essa função para lidar com o input de mensagens no terminal.             
 def handle_input():
-    global message_list, nickname, recieve_token
+    global message_list, nickname, receive_token
     
     print(HEADER_STYLE + "\n# === === === === === === Chat === === === === === === #" + END_STYLE)
     print(TITLE_STYLE + "   ↓   ↓   ↓   ↓   ↓   ↓        ↓   ↓   ↓   ↓   ↓   ↓\n" + END_STYLE)
@@ -183,13 +183,13 @@ def handle_input():
             new_message = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(text, True)) + ";" + text
         # Se for um comando para bloquear o Token:
         elif user_input == "/block":
-            if recieve_token: print(SYSTEM_STYLE + "SYSTEM: Token blocked." + END_STYLE)
-            recieve_token = False
+            if receive_token: print(SYSTEM_STYLE + "SYSTEM: Token blocked." + END_STYLE)
+            receive_token = False
             continue
         # Se for um comando para liberar o Token:
         elif user_input == "/free":
-            if not recieve_token: print(SYSTEM_STYLE + "SYSTEM: Token free." + END_STYLE)
-            recieve_token = True
+            if not receive_token: print(SYSTEM_STYLE + "SYSTEM: Token free." + END_STYLE)
+            receive_token = True
             continue
         # Se for uma comando para forçar um token na rede
         elif user_input == "/add":
@@ -228,10 +228,10 @@ if gen_token:
     handle_token_thread = threading.Thread(target=handle_token)
     handle_token_thread.start()
 
-time.sleep(0.5)
-recive_thread = threading.Thread(target=recive)
+time.sleep(0.25)
+recive_thread = threading.Thread(target=receive)
 recive_thread.start()
 
-time.sleep(0.75)
+time.sleep(0.5)
 input_thread = threading.Thread(target=handle_input)
 input_thread.start()
