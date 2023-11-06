@@ -21,7 +21,7 @@ gen_token, recieve_token = False, True
 
 SOCKET = socket(AF_INET, SOCK_DGRAM)    # Socket.
 TOKEN = "9000"                          # Define o token.
-TOKEN_EXCESS = 3                        # Tempo mínimo entre a chegada de Tokens.
+TOKEN_EXCESS = 4                        # Tempo mínimo entre a chegada de Tokens.
 TOKEN_TIMEOUT = 30                      # Tempo máximo sem receber Tokens.
 PORT = 5000                             # Porta da conexão.
 PRINT = True                            # Define se os detalhes do Token e pacotes serão impressos no chat.
@@ -56,6 +56,7 @@ def config():
 def handle_token():
     global last_token_date
     
+    time.sleep(0.25)
     # Loop para monitorar o token.
     while True:
         # Se o token demorar mutio para chegar:
@@ -90,6 +91,7 @@ def recive():
         try:
             data, _ = SOCKET.recvfrom(1024)
             data = data.decode("utf-8")
+            time.sleep(delay)
         
             # Se o pacote for um token:
             if data == TOKEN and recieve_token:
@@ -189,6 +191,11 @@ def handle_input():
             if not recieve_token: print(SYSTEM_STYLE + "SYSTEM: Token free." + END_STYLE)
             recieve_token = True
             continue
+        # Se for uma comando para forçar um token na rede
+        elif user_input == "/add":
+            print(SYSTEM_STYLE + "SYSTEM: New token forced." + END_STYLE)
+            send(TOKEN)
+            continue
         # Se for uma menssagem global:
         else:
             new_message = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(user_input, False)) + ";" + user_input
@@ -203,7 +210,6 @@ def handle_input():
 # Essa função serve para enviar uma mensagem ao nodo referenciado no 'config.json'.
 def send(msg):
     global ip_destiny, last_msg, delay
-    time.sleep(delay)
     last_msg = msg
     SOCKET.sendto(msg.encode("utf-8"), (ip_destiny.split(":")[0], int(ip_destiny.split(":")[1])))
 
@@ -222,10 +228,10 @@ if gen_token:
     handle_token_thread = threading.Thread(target=handle_token)
     handle_token_thread.start()
 
-time.sleep(0.25)
+time.sleep(0.5)
 recive_thread = threading.Thread(target=recive)
 recive_thread.start()
 
-time.sleep(0.25)
+time.sleep(0.75)
 input_thread = threading.Thread(target=handle_input)
 input_thread.start()

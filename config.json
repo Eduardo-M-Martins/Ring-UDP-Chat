@@ -1,6 +1,6 @@
 {
-    "ip_destiny" : "192.168.13.104:5000",
-    "nickname"  : "Alpha",
-    "delay"     : "5",
-    "gen_token" : true
+    "ip_destiny" : "172.20.10.9:5000",
+    "nickname"  : "du",
+    "delay"     : "3",
+    "gen_token" : false
 }
