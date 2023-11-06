@@ -79,7 +79,7 @@ def crc32(msg, generating):
 
 # Uma thread executa essa função para lidar com o recebimento de pacotes.
 def recive():
-    global last_token_date, message_list, last_msg, nickname, recieve_token
+    global last_token_date, message_list, last_msg, nickname, recieve_token, delay
     
     SOCKET.bind(("0.0.0.0", PORT))
     
