@@ -1,10 +1,3 @@
-##############################################################################################################
-
-# Eduardo Martins, Bernardo Fiorini e Nathan Mello 
-
-##############################################################################################################
-# Imports, variáveis e constantes globais:
-
 import binascii
 from datetime import datetime
 import json
@@ -20,12 +13,12 @@ delay = 0
 gen_token, receive_token = False, True
 
 SOCKET = socket(AF_INET, SOCK_DGRAM)    # Socket.
-TOKEN = "9000"                          # Define o token.
-TOKEN_EXCESS = 2                        # Tempo mínimo entre a chegada de Tokens.
-TOKEN_TIMEOUT = 30                      # Tempo máximo sem receber Tokens.
-PORT = 5000                             # Porta da conexão.
-PRINT = True                            # Define se os detalhes do Token e pacotes serão impressos no chat.
-ERRO = True                             # Define se o gerador de erros deve estar ativado.
+TOKEN = "9000"                          # Define the token.
+TOKEN_EXCESS = 2                        # Minimum time between tokens.
+TOKEN_TIMEOUT = 30                      # Maximum time between tokens.
+PORT = 5000                             # Port.
+PRINT = True                            # If true, token and package details will be printed.
+ERRO = True                             # If true, there will be a probability of error in the crc32.
 
 DARK_STYLE = "\033[1m\33[90m"
 END_STYLE = "\033[0m\033[0m"
@@ -38,9 +31,9 @@ TITLE_STYLE = "\033[1m\33[32m"
 WARNING_STYLE = "\033[1m\033[93m"
 
 ##############################################################################################################
-# Funções:
+# Functions:
 
-# Essa função lê o arquivo 'config.json' para setar as configurações iniciais do nodo.
+# This function reads the 'config.json' file to set the initial settings of the node.
 def config():
     global ip_destiny, nickname, delay, gen_token
     
@@ -52,23 +45,23 @@ def config():
     delay = int(config["delay"])
     gen_token = bool(config["gen_token"])
 
-# Uma thread executa essa função para lidar com o token. Só executa se 'gen_token' estiver em 'True' no 'config.json'.
+# A thread executes this function to handle the token. Only executes if 'gen_token' is 'True' in 'config.json'.
 def handle_token():
     global last_token_date
     
     time.sleep(0.5)
-    # Loop para monitorar o token.
+    # Loop to monitor the token.
     while True:
-        # Se o token demorar mutio para chegar:
+        # If the token takes too long to arrive:
         if (datetime.now() - last_token_date).total_seconds() >= TOKEN_TIMEOUT:
-            # Se não é o primeiro a ser gerado token:
+            # If it is not the first token to be generated:
             if last_token_date != datetime(1900, 1, 1, 0, 0):
                 print(SYSTEM_STYLE + "SYSTEM: Token timeout. New token generated." + END_STYLE)
             last_token_date = datetime.now()
             send(TOKEN)
         time.sleep(1)
 
-# Essa função lida com a conversão para crc32. Possui por padrão uma probabilidade de induzir um erro.
+# This function handles the conversion to crc32. It has by default a probability of inducing an error.
 def crc32(msg, generating):
     if ERRO and generating:
         random.seed(a=None, version=2)
@@ -77,7 +70,7 @@ def crc32(msg, generating):
             return -1  
     return binascii.crc32(msg.encode()) & 0xFFFFFFFF
 
-# Uma thread executa essa função para lidar com o recebimento de pacotes.
+# A thread executes this function to handle the receipt of packages.
 def receive():
     global last_token_date, message_list, last_msg, nickname, receive_token, delay
     
@@ -86,16 +79,16 @@ def receive():
     print(HEADER_STYLE + "\n# === === === === === === Port === === === === === === #\n" + END_STYLE)
     print(TITLE_STYLE + "    UDP: " + END_STYLE + DARK_STYLE + str(PORT) + END_STYLE)
     
-    # Loop para ficar esperando por pacotes.
+    # Loop to wait for packages.
     while True:
         try:
             data, _ = SOCKET.recvfrom(1024)
             data = data.decode("utf-8")
             time.sleep(delay)
         
-            # Se o pacote for um token:
+            # If the package is a token:
             if data == TOKEN and receive_token:
-                # Se o tken foi recebido após o tempo mínimo:
+                # If the token was received after the minimum time:
                 if (datetime.now() - last_token_date).total_seconds() >= TOKEN_EXCESS:
                     last_token_date = datetime.now()
                     if PRINT: print(WARNING_STYLE + "Token Check: " + str(last_token_date.time()) + END_STYLE)
@@ -107,7 +100,7 @@ def receive():
                 else:
                     print(SYSTEM_STYLE + "SYSTEM: Token arrived too soon. Token ignored." + END_STYLE)
             
-            # Se o pacote for uma menssagem:
+            # If the package is a message:
             elif data.startswith("7777:"):
                 if PRINT: print(WARNING_STYLE + "Package Check: " + data + END_STYLE)
                 header = data.split(":")[1].split(";")[0]
@@ -116,41 +109,41 @@ def receive():
                 crc = data.split(":")[1].split(";")[3]
                 msg = ";".join(data.split(":")[1].split(";")[4:])
                 
-                # Se a menssagem é para todos:
+                # If the message is for everyone:
                 if to_nickname == "TODOS":         
                     print(GLOBAL_STYLE + from_nickname + " (global): " + END_STYLE + TEXT_STYLE + msg + END_STYLE)
-                    # Se não foi eu que mandei a menssagem:
+                    # If I didn't send the message:
                     if nickname != from_nickname:       
                         send(data)
-                    # Se foi eu que mandei a menssagem:
+                    # If I sent the message:
                     else:                               
                         send(TOKEN)
                 
-                # Se a menssagem é só para mim:
-                elif to_nickname == nickname  and header == "naoexiste": 
-                    # Se a menssagem chegou com erro:      
+                # If the message is just for me:
+                elif to_nickname == nickname  and header == "naoexiste":    
+                    # If the message arrived with an error:
                     if crc != str(crc32(msg, False)):          
                         send("7777:NACK;" + from_nickname + ";" + to_nickname + ";" + crc + ";" + msg)
-                    # Se não foi eu que mandei a menssagem:
+                    # If I didn't send the message:
                     elif nickname != from_nickname:       
                         print(PRIV_STYLE + from_nickname + ": " + END_STYLE + msg)
                         send("7777:ACK;" + from_nickname + ";" + to_nickname + ";" + crc + ";" + msg)
-                    # Se foi eu que mandei a menssagem:
+                    # If I sent the message:
                     else:                               
                         print(PRIV_STYLE + from_nickname + ": " + END_STYLE + TEXT_STYLE + msg + END_STYLE)
                         send(TOKEN)
                 
-                # Se a menssagem é para outro nó na rede:
+                # If the message is for another node in the network:
                 else:                  
-                    # Se não foi eu que mandei a menssagem:             
+                    # If I didn't send the message:           
                     if nickname != from_nickname:       
                         send(data)
-                    # Se foi eu que mandei a menssagem:
+                    # If I sent the message:
                     else:             
-                        # Se o outro nó recebeu a menssagem:                  
+                        # If the other node received the message:                  
                         if header == "ACK":                 
                             send(TOKEN)
-                        # Se o outro nó recebeu a menssagem com erro:
+                        # If the other node received the message with error:
                         elif header == "NACK":  
                             last_msg_text = ";".join(last_msg.split(";")[4:])
                             fixed_crc32 = crc32(last_msg_text, False)
@@ -158,56 +151,56 @@ def receive():
                             message_list = [last_msg] + message_list
                             print(SYSTEM_STYLE + "SYSTEM: The node '" + to_nickname + "' received the message with error. (msg: " + msg + ")" + END_STYLE)
                             send(TOKEN)
-                        # Se o outro nó não existe:
+                        # If the other node doesn't exist:
                         elif header == "naoexiste":         
                             print(SYSTEM_STYLE + "SYSTEM: The node '" + to_nickname + "' doesn't exist. (msg: " + msg + ")" + END_STYLE)
                             send(TOKEN)
                             
         except ConnectionResetError:
             pass
-        
-# Uma thread executa essa função para lidar com o input de mensagens no terminal.             
+ 
+# A thread executes this function to handle the input of messages in the terminal.          
 def handle_input():
     global message_list, nickname, receive_token
     
     print(HEADER_STYLE + "\n# === === === === === === Chat === === === === === === #" + END_STYLE)
     print(TITLE_STYLE + "   ↓   ↓   ↓   ↓   ↓   ↓        ↓   ↓   ↓   ↓   ↓   ↓\n" + END_STYLE)
     
-    # Loop para ficar esperando por input de mensagens.
+    # Loop to wait for input of messages.
     while True:
         user_input = input("")
-        # Se for uma mensagem privada:
+        # If it is a private message:
         if user_input.startswith("/priv "):
             to_nickname = user_input.split(" ")[1]
             text = ' '.join(user_input.split(" ")[2:])
             new_message = "7777:naoexiste;" + nickname + ";" + to_nickname + ";" + str(crc32(text, True)) + ";" + text
-        # Se for um comando para bloquear o Token:
+        # If it is a command to block the Token:
         elif user_input == "/block":
             if receive_token: print(SYSTEM_STYLE + "SYSTEM: Token blocked." + END_STYLE)
             receive_token = False
             continue
-        # Se for um comando para liberar o Token:
+        # If it is a command to free the Token:
         elif user_input == "/free":
             if not receive_token: print(SYSTEM_STYLE + "SYSTEM: Token free." + END_STYLE)
             receive_token = True
             continue
-        # Se for uma comando para forçar um token na rede
+        # If it is a command to force a token on the network:
         elif user_input == "/add":
             print(SYSTEM_STYLE + "SYSTEM: New token forced." + END_STYLE)
             send(TOKEN)
             continue
-        # Se for uma menssagem global:
+        # If it is a global message:
         else:
             new_message = "7777:naoexiste;" + nickname + ";TODOS;" + str(crc32(user_input, False)) + ";" + user_input
         
-        # Se tem espaço na lista de mensagens:
+        # If there is space in the message list:
         if len(message_list) < 10:
             message_list.append(new_message)
-        # Se não tem espaço na lista de mensagens:
+        # If there is no space in the message list:
         else:
             print(SYSTEM_STYLE + "SYSTEM: Message list is full. (msg: " + user_input + ")" + END_STYLE)
 
-# Essa função serve para enviar uma mensagem ao nodo referenciado no 'config.json'.
+# This function is used to send a message to the node referenced in 'config.json'.
 def send(msg):
     global ip_destiny, last_msg
     last_msg = msg
