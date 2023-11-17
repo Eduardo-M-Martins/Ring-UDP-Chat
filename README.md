@@ -33,7 +33,7 @@ This applications uses Python and before running, the 'config.json' file must be
     "gen_token" : <handle_token>
 }
 ```
-Each machine in the network must point to the next machine in the <ip_destiny>:<port> field until they form a ring. Each machine must have a nickname so that private messages can be sent. A delay of a few seconds must be configured between each message. Finally, the last item is a Boolean variable that indicates whether the machine will be responsible for handling the token. This way, only one machine on the network must contain 'true' in this field, the others must contain 'false'.
+Each machine in the network must point to the next machine in the <ip_destiny>:\<port> field until they form a ring. Each machine must have a nickname so that private messages can be sent. A delay of a few seconds must be configured between each message. Finally, the last item is a Boolean variable that indicates whether the machine will be responsible for handling the token. This way, only one machine on the network must contain 'true' in this field, the others must contain 'false'.
 
 Finally, depending on the number of connected machines and the configured delay, the constants 'TOKEN_EXCESS' and 'TOKEN_TIMEOUT' must be recalculated.
 ## Execution
