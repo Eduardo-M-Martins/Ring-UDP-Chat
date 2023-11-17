@@ -43,5 +43,5 @@ python3 node.py
 ```
 ##
 <div align="center">  
-  <img src="" alt="Chat preview" /> 
+  <img src="https://media.discordapp.net/attachments/1076157666986049598/1175077246701146212/image.png?ex=6569eaf7&is=655775f7&hm=3a489f0fe324872f391dde3c8591f5d7cdd99477349cdc751eda9cc1134fa177&=&width=376&height=390" alt="Chat preview" /> 
 </div>
